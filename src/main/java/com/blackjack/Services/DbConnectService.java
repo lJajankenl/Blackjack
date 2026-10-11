@@ -4,13 +4,18 @@ import java.sql.*;
 
 // Connecting to the Database and Initializing the tables needed.
 public class DbConnectService {
-    // Supabase connection details
-    private static final String URL = "jdbc:postgresql://aws-0-us-west-1.pooler.supabase.com:6543/postgres";
-    private static final String USER = "postgres.ojjqpawdgbwhktsbptya";
-    private static final String PASSWORD = "eecs2311blackjack";
+
+    // The connection details are read from environment variables, so no
+    // credentials are stored in the source code. Set these three before running:
+    //   BLACKJACK_DB_URL       e.g. jdbc:postgresql://<host>:<port>/postgres
+    //   BLACKJACK_DB_USER      the database username
+    //   BLACKJACK_DB_PASSWORD  the database password
+    private static final String URL_VAR = "BLACKJACK_DB_URL";
+    private static final String USER_VAR = "BLACKJACK_DB_USER";
+    private static final String PASSWORD_VAR = "BLACKJACK_DB_PASSWORD";
 
     public static void main(String[] args) {
-        try (Connection connection = DriverManager.getConnection(URL, USER, PASSWORD)) {
+        try (Connection connection = connect()) {
             System.out.println("Connected to Supabase PostgreSQL database!");
             // Step 1: Create Tables
             createTables(connection);
@@ -40,6 +45,21 @@ public class DbConnectService {
 
     // Method to get a database connection
     public static Connection connect() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
+        String url = requireEnv(URL_VAR);
+        String user = requireEnv(USER_VAR);
+        String password = requireEnv(PASSWORD_VAR);
+        return DriverManager.getConnection(url, user, password);
+    }
+
+    // Reads one environment variable. A missing variable is reported as an
+    // SQLException because every caller of connect() already handles that type,
+    // so a missing setting is treated the same way as a failed connection.
+    private static String requireEnv(String name) throws SQLException {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            throw new SQLException("Database is not configured: environment variable "
+                    + name + " is not set.");
+        }
+        return value;
     }
 }
